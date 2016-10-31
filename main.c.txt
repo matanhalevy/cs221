@@ -1,0 +1,397 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include "boot_sect.h"
+
+
+// print out: NAME: /... NAME
+void printNameSoFar( uint8_t name[], int len) {
+	int i;
+	printf("\nName: \\");
+	for (i = 0; i < len+1; i++) {
+		printf("%c", name[i]);
+	}
+}
+
+void traverseSub(FILE * file, uint8_t fat[], uint8_t entry[], uint8_t name[], int len) {
+	int checkR;
+	int i,j,k,h,leng;
+	for (j=0; j < 64; j+=32) {
+		printNameSoFar(name, len);
+		if (j == 0) printf("\\.");
+		else printf("\\..");
+		printf("\nThis file is a directory.");
+		int initC = (entry[j+26] | (entry[j+27]<<8));
+		//printf("\n%d", entry[0]);
+		
+		// Fucking segfault
+		printf("\n%u", initC);
+		printf("\nClusters: ");
+		if (initC == 0) printf("%u", initC);
+		else {
+			// corresponding cluster number
+			int clusterNum = (fat[initC/2*3] | fat[initC/2*3+1] << 8 | fat[initC/2*3+2] << 16);
+			// cluster x
+			if (initC % 2 == 0) clusterNum = clusterNum % 4096;
+			// cluster x+1
+			else clusterNum = clusterNum / 4096;
+			
+			printf("%u", initC);
+			if (clusterNum!=0xfff){  
+				while (1) {	
+					initC = clusterNum;
+					printf(", %u", initC);
+					clusterNum = (fat[initC/2*3] | fat[initC/2*3+1] <<8  | fat[initC/2*3+2]<<16);
+					// cluster x
+					if (initC % 2 == 0) clusterNum = clusterNum % 4096;
+					// cluster x+1
+					else clusterNum = clusterNum / 4096;
+					
+					if (clusterNum == 0xff8 || clusterNum == 0xff9 || clusterNum == 0xffa || clusterNum == 0xffb || clusterNum == 0xffc || clusterNum == 0xffd || clusterNum == 0xffe || clusterNum == 0xfff) {
+						break;
+					}
+				}
+			}
+		}
+		printf("\n");		
+	}
+	
+	// ABOVE :: The /. and /.. of every subdirectory 
+	// BELOW :: File/directory entries in subdirectories
+	
+	for (j = 64; j < (sizeof(entry)/sizeof(char))*32; j+=32) {
+		leng = 11 + len;
+		char fName[leng];
+		for (i = 0; i < len+1; i++) {
+			fName[i] = name[i];
+		}
+		
+		unsigned int dsize=(entry[j+28] | (entry[j+29]<<8) | (entry[j+30]<<16) | (entry[j+31]<<24));
+		int initC = (entry[j+26] | (entry[j+27]<<8));
+		//printNameSoFar(fName, len);
+	
+		// if it's a file:
+		if (dsize > 0) {
+			
+			printNameSoFar(fName, len);
+
+			if (entry[j]==0x20 || entry[j]==0xe5 || initC == 0) return;
+			
+			printf("\\");
+			
+			for (i=0; i<8; i++) {
+				char a = entry[j+i];
+				if (a == 0x20) break;
+				if (a == (char) 0x22 || a == (char) 0x2a || a == (char) 0x2b ||
+					a == (char) 0x2c || a == (char) 0x2e || a == (char) 0x2f ||
+					a == (char) 0x3a || a == (char) 0x3b || a == (char) 0x3c ||
+					a == (char) 0x3d || a == (char) 0x3e || a == (char) 0x3f ||
+					a == (char) 0x5b || a == (char) 0x5c || a == (char) 0x5d ||
+					a == (char) 0x7c) {
+				return;
+				}
+				printf("%c", entry[j+i]);
+			}
+			printf(".");
+			for (i=8; i<11; i++) {
+				char a = entry[j+i];
+				if (entry[j+i] == ' ') break;
+				if (a == (char) 0x22 || a == (char) 0x2a || a == (char) 0x2b ||
+					a == (char) 0x2c || a == (char) 0x2e || a == (char) 0x2f ||
+					a == (char) 0x3a	 || a == (char) 0x3b || a == (char) 0x3c ||
+					a == (char) 0x3d || a == (char) 0x3e || a == (char) 0x3f ||
+					a == (char) 0x5b || a == (char) 0x5c || a == (char) 0x5d ||
+					a == (char) 0x7c) {
+				return;
+				}
+				printf("%c", entry[j+i]);
+				}
+			
+			
+			printf("\nSize: %u", dsize);
+			
+			printf("\nClusters: ");
+			
+			// initial cluster number
+			k = initC;
+			// since it's x+1 and x, when it's x+1 it needs to look at the next part
+			
+			// corresponding cluster number
+			int clusterNum = (fat[initC/2*3] | fat[initC/2*3+1] << 8 | fat[initC/2*3+2] << 16);
+			// cluster x
+			if (initC % 2 == 0) clusterNum = clusterNum % 4096;
+			// cluster x+1
+			else clusterNum = clusterNum / 4096;
+				
+			
+			printf("%u", initC);
+			if (clusterNum!=0xfff)  
+				while (1) {	
+					initC = clusterNum;
+					printf(", %u", initC);
+					clusterNum = (fat[initC/2*3] | fat[initC/2*3+1] <<8  | fat[initC/2*3+2]<<16);
+					// cluster x
+					if (initC % 2 == 0) clusterNum = clusterNum % 4096;
+					// cluster x+1
+					else clusterNum = clusterNum / 4096;
+					
+					if (clusterNum == 0xff8 || clusterNum == 0xff9 || clusterNum == 0xffa || clusterNum == 0xffb || clusterNum == 0xffc || clusterNum == 0xffd || clusterNum == 0xffe || clusterNum == 0xfff) {
+						break;
+					}
+			}
+			printf("\n");		
+			
+		}
+		// if the file after /. and /.. is a directory..
+		else {
+				if (entry[j]==0x20 || entry[j]==0xe5 || initC == 0) return;
+				printNameSoFar(name, len);	
+				// do the same thing i did at root with fname
+				printf("\n\\");
+				for (i=0; i<8; i++) {
+					char a = entry[j+i];
+					if (a == 0x20) break;
+					if (a == (char) 0x22 || a == (char) 0x2a || a == (char) 0x2b ||
+						a == (char) 0x2c || a == (char) 0x2e || a == (char) 0x2f ||
+						a == (char) 0x3a || a == (char) 0x3b || a == (char) 0x3c ||
+						a == (char) 0x3d || a == (char) 0x3e || a == (char) 0x3f ||
+						a == (char) 0x5b || a == (char) 0x5c || a == (char) 0x5d ||
+						a == (char) 0x7c) {
+					return;
+					}
+					
+					leng=i;
+					printf("%c", entry[j+i]);
+					name[len+leng] = entry[j+i];
+				}
+				if (dsize>0) {
+					leng++;
+					printf(".");
+					name[leng] = 0x2e;
+					for (i=8; i<11; i++) {
+						char a = entry[j+i];
+						if (entry[j+i] == ' ') break;
+						if (a == (char) 0x22 || a == (char) 0x2a || a == (char) 0x2b ||
+							a == (char) 0x2c || a == (char) 0x2e || a == (char) 0x2f ||
+							a == (char) 0x3a	 || a == (char) 0x3b || a == (char) 0x3c ||
+							a == (char) 0x3d || a == (char) 0x3e || a == (char) 0x3f ||
+							a == (char) 0x5b || a == (char) 0x5c || a == (char) 0x5d ||
+							a == (char) 0x7c) {
+						return;
+						}
+						len=i;
+						printf("%c", entry[j+i]);
+						name[len] = entry[j+i];
+					}
+				}
+				fseek(file, (41-10)*512+2048*(initC-2), SEEK_CUR);
+				// cluster size in sectors * sector size
+				uint8_t clust[4*512*sizeof(char)];
+				// check this read
+				fread(clust, sizeof(char), 4*512, file);
+				fseek(file, -(41-10)*512+2048*(initC-2), SEEK_CUR);
+				traverseSub(file, fat, clust, name, leng);
+			}
+	}
+	return;
+	
+}
+
+
+void traverseRoot(FILE * file, uint8_t fat[], uint8_t entry[]) {
+	int checkR;
+	int i,j,k,h, len;
+	
+
+	//printf("\n%u\n",sizeof(fat));
+	// print out all the files in the root directory
+	for (j = 0; j < (sizeof(entry)/sizeof(char))*32; j+=32) {
+		//printf("came here");
+		char name[11];
+		unsigned int dsize=(entry[j+28] | (entry[j+29]<<8) | (entry[j+30]<<16) | (entry[j+31]<<24));
+		int initC = (entry[j+26] | (entry[j+27]<<8));
+		
+		if (entry[j]==0x20 || entry[j]==0xe5 || initC == 0) return;
+		printf("\nName: \\");
+		for (i=0; i<8; i++) {
+			char a = entry[j+i];
+			if (a == 0x20) break;
+			if (a == (char) 0x22 || a == (char) 0x2a || a == (char) 0x2b ||
+				a == (char) 0x2c || a == (char) 0x2e || a == (char) 0x2f ||
+				a == (char) 0x3a || a == (char) 0x3b || a == (char) 0x3c ||
+				a == (char) 0x3d || a == (char) 0x3e || a == (char) 0x3f ||
+				a == (char) 0x5b || a == (char) 0x5c || a == (char) 0x5d ||
+				a == (char) 0x7c) {
+			return;
+			}
+			len=i;
+			printf("%c", entry[j+i]);
+			name[len] = entry[j+i];
+		}
+		if (dsize>0) {
+			len++;
+			printf(".");
+			name[len] = 0x2e;
+			for (i=8; i<11; i++) {
+				char a = entry[j+i];
+				if (entry[j+i] == ' ') break;
+				if (a == (char) 0x22 || a == (char) 0x2a || a == (char) 0x2b ||
+					a == (char) 0x2c || a == (char) 0x2e || a == (char) 0x2f ||
+					a == (char) 0x3a	 || a == (char) 0x3b || a == (char) 0x3c ||
+					a == (char) 0x3d || a == (char) 0x3e || a == (char) 0x3f ||
+					a == (char) 0x5b || a == (char) 0x5c || a == (char) 0x5d ||
+					a == (char) 0x7c) {
+				return;
+				}
+				len++;
+				printf("%c", entry[j+i]);
+				name[len]=entry[j+i];
+			}
+		}
+		//printNameSoFar(name, len);
+		
+		
+		if (dsize==0) 
+			printf("\nThis file is a directory.");
+		else 
+			printf("\nSize: %u", dsize);
+		
+		printf("\nClusters: ");
+		
+		// initial cluster number
+		k = initC;
+		// since it's x+1 and x, when it's x+1 it needs to look at the next part
+		
+		// corresponding cluster number
+		int clusterNum = (fat[initC/2*3] | fat[initC/2*3+1] << 8 | fat[initC/2*3+2] << 16);
+		// cluster x
+		if (initC % 2 == 0) clusterNum = clusterNum % 4096;
+		// cluster x+1
+		else clusterNum = clusterNum / 4096;
+			
+		
+		printf("%u", initC);
+		if (clusterNum!=0xfff)  
+			while (1) {	
+				initC = clusterNum;
+				printf(", %u", initC);
+				clusterNum = (fat[initC/2*3] | fat[initC/2*3+1] <<8  | fat[initC/2*3+2]<<16);
+				// cluster x
+				if (initC % 2 == 0) clusterNum = clusterNum % 4096;
+				// cluster x+1
+				else clusterNum = clusterNum / 4096;
+				
+				if (clusterNum == 0xff8 || clusterNum == 0xff9 || clusterNum == 0xffa || clusterNum == 0xffb || clusterNum == 0xffc || clusterNum == 0xffd || clusterNum == 0xffe || clusterNum == 0xfff) {
+					break;
+				}
+		}
+		printf("\n");		
+		
+		if (dsize == 0) {
+			
+			// reading too far after the first sub directory crawl
+			
+			// first usable directory offset - whats been read so far
+			fseek(file, (41-10)*512+2048*(k-2), SEEK_CUR);
+			// cluster size in sectors * sector size
+			uint8_t clust[4*512*sizeof(char)];	
+			
+			// check this read
+			///////////////////////printf("%u", (41-10)*512+2048*(k-2));
+			fread(clust, sizeof(char), 4*512, file);
+			fseek(file, -(41-10)*512+2048*(k-2), SEEK_CUR);
+			traverseSub(file, fat, clust, name, len);
+		}
+	}
+	
+	
+	
+	return;
+}
+
+
+
+int main(int argc, char** argv) 
+{	
+	FILE * fl = fopen("fat_volume.dat","rb");
+	//fl = fopen(argv[1],"rb");
+	if (fl==NULL) {printf("Error: Can't open file.");}
+	int checkRead;
+	
+	// initialize file reader
+	boot_sect_t * bootsec = malloc(512*sizeof(char));
+	// read the bootsec from the file
+	checkRead = fread(bootsec, sizeof (char), 512, fl);
+	if (checkRead != 512) {
+		printf("Inaccurate read.\n");
+		return 0;
+	}
+	
+	//test
+	unsigned int totalsec = ((bootsec->sectors16[1]<<8) | bootsec->sectors16[0]);
+	printf("total # of sectors: %u\n", totalsec);
+	
+	// sector size
+	unsigned int ssize = ((bootsec->ssize[1]<<8) | bootsec->ssize[0]);
+	printf("Sector size: %u\n", ssize);
+	
+	// cluster size
+	printf("Cluster size in sectors: %u\n", bootsec->csize);
+	
+	// Number of root directory entries
+	unsigned int numroot = ((bootsec->numroot[1]<<8) | bootsec->numroot[0]);
+	printf("Number of root directory entries: %u\n", numroot);
+	
+	// Num sectors/FAT
+	unsigned int sectperfat = ((bootsec->sectperfat16[1]<<8) | bootsec->sectperfat16[0]);
+	printf("Number of sectors per FAT: %u\n", sectperfat);
+	
+	// Reserved sectors
+	unsigned int res = ((bootsec->reserved[1]<<8) | bootsec->reserved[0]);
+	printf("Reserved sectors: %u\n", res);
+	
+	// Hidden sectors
+	unsigned int hid = ((bootsec->prevsect[1]<<8) | bootsec->prevsect[0]);
+	printf("Number of hidden sectors: %u\n", hid);
+
+	// Fat offset in sectors
+	printf("FAT offset in sectors: %u\n", res);
+	
+	// Root directory offset in sectors
+	unsigned int fatsize = bootsec->numfat*sectperfat;
+	unsigned int rootoffset = res+fatsize;
+	printf("Root directory offset in sectors: %u\n", rootoffset);
+	
+	// First usable cluster offset (cluster #2) in sectors
+	unsigned int cloffset = ((numroot * 32) + (ssize / 2)) / ssize; 
+	printf("First usable cluster offset in sectors: %u\n", rootoffset + cloffset);
+	
+	//free memory
+	//free(bootsec);
+	
+	
+	// Initiialize FAT table
+	uint8_t fatTable[ssize*sectperfat*sizeof(char)];
+	checkRead = fread(&fatTable, sizeof(char),ssize*sectperfat,fl);
+	if (checkRead != ssize*sectperfat) {
+		printf("Inaccurate read.\n");
+		return 0;
+	}
+	
+	// Seek to directory entries
+	unsigned int os = sectperfat*ssize*sizeof(char);
+	fseek(fl, os, SEEK_CUR);
+	
+	// Initialize root directory
+	uint8_t dirEntry[numroot*sizeof(char)*(totalsec-rootoffset)];
+	checkRead = fread(&dirEntry, sizeof(char),numroot, fl);	
+	if (checkRead != numroot) {
+		printf("Inaccurate read.\n");
+		return 0;
+	}
+	
+	
+	traverseRoot(fl, fatTable,dirEntry);
+	
+	fclose(fl);	
+	return 0;
+}

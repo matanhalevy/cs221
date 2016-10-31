@@ -1,0 +1,16 @@
+2c. Replace 20 with:     ld $ffffffec, r0       # r0 = -20     changing the allocation space from 12 to 20 
+    Replace 22 with:     st r6, 0x10(r5)        # changing the return address to be lower 
+    
+    Insert after 26:     ld 0x14(r5), r0     #  r0 = a2
+						 st r0, 0x8(r5)     
+                         ld 0x18(r5), r0     #  r0 = a3  (these might not mater since we do not need to use it ) 
+                         st r0, 0xc(r5) 
+                            
+    Replace 29 with :    ld 0x10(r5), r6     # loading the jump value 
+    Replace 30 with :    ld $14, r0          # r0 = 20     
+                         
+2d. Replace 7 with  :    ld $0xfffffff4, r0   # r0 = -12
+    Insert after 12 :    ld   $0x2, r0        # r0 = 2 = value of a2
+                         st   r0, 0x8(r5)     # store value of a2 to stack 
+    Replace 15 with :    ld   $12 , r0
+

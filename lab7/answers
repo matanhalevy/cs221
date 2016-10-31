@@ -1,0 +1,16 @@
+100 = 660
+1000 = 11001
+500 = 4876
+
+4. C(n) { n = 0     0
+	 { n = 1     0
+	 { n > 1     1/n (n-1 + sum from m=1 to n (c(m-1 ) + c(n-m))
+
+	 1/n -< return sum/n
+	 sum m =1 to n because for int m=1; m<= m++
+
+5. a) nlgn
+	b) worst case :n^2
+
+	in-place sort:: no because it keeps adding space in order to track recursvive function calls.
+	stable sort :: no because the pivots are chosen randomly 
